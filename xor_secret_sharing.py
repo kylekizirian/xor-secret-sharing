@@ -1,5 +1,27 @@
 import argparse
+import os
 import random
+
+def get_random_fake_secret(length):
+    random_string = ""
+    random_line_number = random.randint(124, 5000)
+    non_blank_line_number = 0
+    file_path = os.path.join(os.curdir, "Frankenstein", "Frankenstein.txt")
+
+    frankenstein_text = open(file_path)
+    while True:
+        line = frankenstein_text.readline()
+        if line != '\n':
+            non_blank_line_number = non_blank_line_number + 1
+            if non_blank_line_number == random_line_number:
+                i = 0
+                while i < length:
+                    i = i + 1
+                    c = frankenstein_text.read(1)
+                    random_string = random_string + c
+                break
+    return random_string
+
 
 def generate_random_share(length):
     share = []
@@ -33,8 +55,8 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    print("Original secret:")
-    print(args.secret + "\n")
+    # print("Original secret:")
+    # print(args.secret + "\n")
 
     # generate n-1 random secret shares that are same length as secret
     shares_list = []
@@ -65,8 +87,11 @@ if __name__ == '__main__':
             val = val ^ shares_list[j][i]
         recreated_secret = recreated_secret + chr(val)
     
-    print("Recreated secret:")
+    # print("Recreated secret:")
     print(recreated_secret)
+
+    rand_str = get_random_fake_secret(len(args.secret))
+    print(rand_str)
 
     if args.NAIVE:
       generate_naive_secret_share()
