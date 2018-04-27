@@ -3,7 +3,8 @@
 Python application that generates deceptive secrets using an XOR-based scheme
 
 To run example:
-python ./xor_secret_sharing.py --secret "hello world" --n 20 --m 5 --output ./output.txt
+
+python ./xor_secret_sharing.py --secret "hello world" --n 20 --m 5 --NAIVE --output ./output.txt
 
 TODO:
 
