@@ -3,23 +3,19 @@ import os
 import random
 
 def get_random_fake_secret(length):
-    random_string = ""
     random_line_number = random.randint(124, 5000)
-    non_blank_line_number = 0
     file_path = os.path.join(os.curdir, "Frankenstein", "Frankenstein.txt")
 
-    frankenstein_text = open(file_path)
-    while True:
-        line = frankenstein_text.readline()
-        if line != '\n':
-            non_blank_line_number = non_blank_line_number + 1
-            if non_blank_line_number == random_line_number:
-                i = 0
-                while i < length:
-                    i = i + 1
-                    c = frankenstein_text.read(1)
-                    random_string = random_string + c
-                break
+    with open(file_path) as file:
+        lines = (line.rstrip() for line in file)
+        lines = list(line for line in lines if line)
+
+    if length < len(lines[random_line_number]):
+        random_string = lines[random_line_number][0:length]
+    else:
+        random_string = lines[random_line_number]
+        for i in range(0,length-len(lines[random_line_number])):
+            random_string = random_string + ' '
     return random_string
 
 
