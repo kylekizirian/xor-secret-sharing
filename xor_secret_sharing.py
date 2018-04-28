@@ -24,16 +24,65 @@ def generate_random_share(length):
         share.append(random.randint(0, 127)) # ascii char/1 byte range
     return share
 
+def convert_string_to_ascii(secret_string):
+    secret_to_ascii = []
+    for i in range(len(secret_string)):
+        secret_to_ascii.append(ord(secret_string[i]))
+    return secret_to_ascii
+
+def convert_ascii_to_string(ascii_list):
+    ascii_to_string = ""
+    for ascii_val in ascii_list:
+        ascii_to_string = ascii_to_string + chr(ascii_val)
+    return ascii_to_string
+
 def generate_naive_secret_share(args):
-    # TODO
     """
     With NAIVE approach, encode each secret separately. With m secrets and n
     shares per secret, requires m*n storage.
     :param args: 
     :return: 
     """
+    # TODO
+    secret_string_length = len(args.secret)
+    secret_list = []
+    # plant m-1 fake secrets
+    for _ in range(int(args.m) - 1):
+        secret_list.append(get_random_fake_secret(secret_string_length))
 
-    pass
+    # secret_list is now length m, with m-1 fake secrets + real secret
+    secret_list.append(args.secret)
+
+    all_secret_shares = []
+    for secret in secret_list:
+        # generate shares for each secret
+        shares_for_one_secret = []
+        for _ in range(int(args.n) - 1):
+            shares_for_one_secret.append(generate_random_share(secret_string_length))
+
+        secret_to_ascii = convert_string_to_ascii(secret)
+
+        last_share = []
+        for i in range(secret_string_length):
+            val = 127
+            for j in range(len(shares_for_one_secret)):
+                val = val ^ shares_for_one_secret[j][i]
+            val = val ^ secret_to_ascii[i]
+            last_share.append(val)
+
+        shares_for_one_secret.append(last_share)
+        all_secret_shares.append(shares_for_one_secret)
+
+    for shares_for_one_secret in all_secret_shares:
+        recreated_secret = ""
+        for i in range(len(args.secret)):
+            val = 127
+            for j in range(len(shares_for_one_secret)):
+                val = val ^ shares_for_one_secret[j][i]
+            recreated_secret = recreated_secret + chr(val)
+        print(shares_for_one_secret)
+        print(recreated_secret)
+
 
 def generate_simple_secret_share(args):
     """
@@ -43,10 +92,12 @@ def generate_simple_secret_share(args):
     :return: 
     """
     # TODO
+
     pass
 
 def generate_cyclic_secret_share(args):
     # TODO
+
     pass
 
 if __name__ == '__main__':
@@ -96,10 +147,10 @@ if __name__ == '__main__':
         recreated_secret = recreated_secret + chr(val)
     
     # print("Recreated secret:")
-    print(recreated_secret)
+    # print(recreated_secret)
 
-    rand_str = get_random_fake_secret(len(args.secret))
-    print(rand_str)
+    # rand_str = get_random_fake_secret(len(args.secret))
+    # print(rand_str)
 
     if args.NAIVE:
       generate_naive_secret_share(args)
