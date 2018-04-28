@@ -231,6 +231,9 @@ def generate_cyclic_secret_share(args):
     for j in range(int(args.r)):
         shares_for_last_secret.append(all_secret_shares[0][j])
 
+    for j in range(int(args.n) - (2 * int(args.r)) - 1):
+        shares_for_last_secret.append(generate_random_share(secret_string_length))
+
     secret_to_ascii = convert_string_to_ascii(secret_list[-1])
     last_share = []
     for j in range(secret_string_length):
