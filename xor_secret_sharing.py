@@ -90,6 +90,10 @@ def generate_naive_secret_share(args):
             f.write(line)
         f.write(recreated_secret + "\n\n")
 
+    storage_size = int(args.m) * int(args.n) * secret_string_length
+    line = "Total storage size = " + str(storage_size) + " bytes"
+    f.write(line)
+
     f.close()
 
 
@@ -149,6 +153,10 @@ def generate_simple_secret_share(args):
             line = line + '\n'
             f.write(line)
         f.write(recreated_secret + "\n\n")
+
+    storage_size = (int(args.m) + int(args.n)) * secret_string_length
+    line = "Total storage size = " + str(storage_size) + " bytes"
+    f.write(line)
 
     f.close()
 
@@ -215,6 +223,10 @@ def generate_cyclic_secret_share(args):
             f.write(line)
         f.write(recreated_secret + "\n\n")
 
+    storage_size = (int(args.m) * (int(args.n) - int(args.r))) * secret_string_length
+    line = "Total storage size = " + str(storage_size) + " bytes"
+    f.write(line)
+
     f.close()
 
 
@@ -237,7 +249,7 @@ if __name__ == '__main__':
     if args.CYCLIC and not args.r:
         raise Exception('Must provide --r argument for CYCLIC approach!')
 
-    if args.CYCLIC and (int(args.r) > int(args.m) - 1):
+    if args.CYCLIC and (int(args.r) > int(args.n) - 1):
         raise Exception('Value for --r argument is too large!')
 
     if args.NAIVE:
