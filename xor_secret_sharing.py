@@ -234,6 +234,12 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
+    if args.CYCLIC and not args.r:
+        raise Exception('Must provide --r argument for CYCLIC approach!')
+
+    if args.CYCLIC and (int(args.r) > int(args.m) - 1):
+        raise Exception('Value for --r argument is too large!')
+
     if args.NAIVE:
       generate_naive_secret_share(args)
 
