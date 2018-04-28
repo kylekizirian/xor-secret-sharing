@@ -11,8 +11,3 @@ python ./xor_secret_sharing.py --secret "hello world" --n 5 --m 5 --SIMPLES --ou
 To run CYCLIC:
 python ./xor_secret_sharing.py --secret "hello world" --n 5 --m 5 --r 2 --CYCLIC --output output.txt
 
-TODO:
-
-Generate m fake secrets -> use free online text to generate real-looking sentences with same length as secret string?
-
-Generate shares for fake secrets based on given approach (NAIVE, SIMPLE, CYCLIC) 
