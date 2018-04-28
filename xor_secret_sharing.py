@@ -92,8 +92,48 @@ def generate_simple_secret_share(args):
     :return: 
     """
     # TODO
+    secret_string_length = len(args.secret)
+    secret_list = []
+    # plant m-1 fake secrets
+    for _ in range(int(args.m) - 1):
+        secret_list.append(get_random_fake_secret(secret_string_length))
 
-    pass
+    # secret_list is now length m, with m-1 fake secrets + real secret
+    secret_list.append(args.secret)
+
+    random_shares = []
+    for _ in range(int(args.n) - 1):
+        random_shares.append(generate_random_share(secret_string_length))
+
+    all_secret_shares = []
+    for one_secret in secret_list:
+        # generate shares for each secret
+        shares_for_one_secret = []
+        shares_for_one_secret = shares_for_one_secret + random_shares
+
+        secret_to_ascii = convert_string_to_ascii(one_secret)
+
+        last_share = []
+        for i in range(secret_string_length):
+            val = 127
+            for j in range(len(shares_for_one_secret)):
+                val = val ^ shares_for_one_secret[j][i]
+            val = val ^ secret_to_ascii[i]
+            last_share.append(val)
+
+        shares_for_one_secret.append(last_share)
+        all_secret_shares.append(shares_for_one_secret)
+
+    for shares_for_one_secret in all_secret_shares:
+        recreated_secret = ""
+        for i in range(len(args.secret)):
+            val = 127
+            for j in range(len(shares_for_one_secret)):
+                val = val ^ shares_for_one_secret[j][i]
+            recreated_secret = recreated_secret + chr(val)
+        print(shares_for_one_secret)
+        print(recreated_secret)
+
 
 def generate_cyclic_secret_share(args):
     # TODO
