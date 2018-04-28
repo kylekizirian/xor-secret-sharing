@@ -18,22 +18,34 @@ def get_random_fake_secret(length):
             random_string = random_string + ' '
     return random_string
 
-
 def generate_random_share(length):
     share = []
     for _ in range(length):
         share.append(random.randint(0, 127)) # ascii char/1 byte range
     return share
 
-def generate_naive_secret_share():
+def generate_naive_secret_share(args):
+    # TODO
+    """
+    With NAIVE approach, encode each secret separately. With m secrets and n
+    shares per secret, requires m*n storage.
+    :param args: 
+    :return: 
+    """
+
+    pass
+
+def generate_simple_secret_share(args):
+    """
+    With SIMPLE approach, encode m secrets with m + n - 1 shares. Generate n
+    random shares, then generate m last shares to create m random secrets.
+    :param args: 
+    :return: 
+    """
     # TODO
     pass
 
-def generate_simple_secret_share():
-    # TODO
-    pass
-
-def generate_cyclic_secret_share():
+def generate_cyclic_secret_share(args):
     # TODO
     pass
 
@@ -90,10 +102,10 @@ if __name__ == '__main__':
     print(rand_str)
 
     if args.NAIVE:
-      generate_naive_secret_share()
+      generate_naive_secret_share(args)
 
     if args.SIMPLE:
-        generate_simple_secret_share()
+        generate_simple_secret_share(args)
 
     if args.CYCLIC:
-        generate_cyclic_secret_share()
+        generate_cyclic_secret_share(args)
