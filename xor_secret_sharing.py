@@ -63,8 +63,8 @@ def generate_naive_secret_share(args):
 
         last_share = []
         for i in range(secret_string_length):
-            val = 127
-            for j in range(len(shares_for_one_secret)):
+            val = shares_for_one_secret[0][i]
+            for j in range(1, len(shares_for_one_secret)):
                 val = val ^ shares_for_one_secret[j][i]
             val = val ^ secret_to_ascii[i]
             last_share.append(val)
@@ -77,8 +77,8 @@ def generate_naive_secret_share(args):
     for shares_for_one_secret in all_secret_shares:
         recreated_secret = ""
         for i in range(len(args.secret)):
-            val = 127
-            for j in range(len(shares_for_one_secret)):
+            val = shares_for_one_secret[0][i]
+            for j in range(1, len(shares_for_one_secret)):
                 val = val ^ shares_for_one_secret[j][i]
             recreated_secret = recreated_secret + chr(val)
 
@@ -127,8 +127,8 @@ def generate_simple_secret_share(args):
 
         last_share = []
         for i in range(secret_string_length):
-            val = 127
-            for j in range(len(shares_for_one_secret)):
+            val = shares_for_one_secret[0][i]
+            for j in range(1, len(shares_for_one_secret)):
                 val = val ^ shares_for_one_secret[j][i]
             val = val ^ secret_to_ascii[i]
             last_share.append(val)
@@ -141,8 +141,8 @@ def generate_simple_secret_share(args):
     for shares_for_one_secret in all_secret_shares:
         recreated_secret = ""
         for i in range(len(args.secret)):
-            val = 127
-            for j in range(len(shares_for_one_secret)):
+            val = shares_for_one_secret[0][i]
+            for j in range(1, len(shares_for_one_secret)):
                 val = val ^ shares_for_one_secret[j][i]
             recreated_secret = recreated_secret + chr(val)
 
@@ -184,34 +184,72 @@ def generate_cyclic_secret_share(args):
 
     all_secret_shares = []
 
-    for secret in secret_list:
-        # generate shares for each secret
-        shares_for_one_secret = []
-        shares_for_one_secret = shares_for_one_secret + random_shares
+    shares_for_first_secret = []
+    for _ in range(int(args.n) - 1):
+        shares_for_first_secret.append(generate_random_share(secret_string_length))
 
-        for _ in range(int(args.n) - int(args.r) - 1):
+    secret_to_ascii = convert_string_to_ascii(secret_list[0])
+    last_share = []
+    for i in range(secret_string_length):
+        val = shares_for_first_secret[0][i]
+        for j in range(1, len(shares_for_first_secret)):
+            val = val ^ shares_for_first_secret[j][i]
+        val = val ^ secret_to_ascii[i]
+        last_share.append(val)
+
+    shares_for_first_secret.append(last_share)
+    all_secret_shares.append(shares_for_first_secret)
+
+    for i in range(1, len(secret_list) - 1):
+        secret = secret_list[i]
+
+        shares_for_one_secret = []
+        for j in range(int(args.r), 0, -1):
+            shares_for_one_secret.append(all_secret_shares[i-1][(j)*-1])
+
+        for j in range(int(args.n) - int(args.r) - 1):
             shares_for_one_secret.append(generate_random_share(secret_string_length))
 
         secret_to_ascii = convert_string_to_ascii(secret)
-
         last_share = []
-        for i in range(secret_string_length):
-            val = 127
-            for j in range(len(shares_for_one_secret)):
-                val = val ^ shares_for_one_secret[j][i]
-            val = val ^ secret_to_ascii[i]
+        for j in range(secret_string_length):
+            val = shares_for_one_secret[0][j]
+            for k in range(1, len(shares_for_one_secret)):
+                val = val ^ shares_for_one_secret[k][j]
+            val = val ^ secret_to_ascii[j]
             last_share.append(val)
 
         shares_for_one_secret.append(last_share)
         all_secret_shares.append(shares_for_one_secret)
+
+
+    shares_for_last_secret = []
+
+    for j in range(int(args.r), 0, -1):
+        shares_for_last_secret.append(all_secret_shares[-1][(j) * -1])
+
+    for j in range(int(args.r)):
+        shares_for_last_secret.append(all_secret_shares[0][j])
+
+    secret_to_ascii = convert_string_to_ascii(secret_list[-1])
+    last_share = []
+    for j in range(secret_string_length):
+        val = shares_for_last_secret[0][j]
+        for k in range(1, len(shares_for_last_secret)):
+            val = val ^ shares_for_last_secret[k][j]
+        val = val ^ secret_to_ascii[j]
+        last_share.append(val)
+
+    shares_for_last_secret.append(last_share)
+    all_secret_shares.append(shares_for_last_secret)
 
     f = open(str(args.output), 'w+')
 
     for shares_for_one_secret in all_secret_shares:
         recreated_secret = ""
         for i in range(len(args.secret)):
-            val = 127
-            for j in range(len(shares_for_one_secret)):
+            val = shares_for_one_secret[0][i]
+            for j in range(1, len(shares_for_one_secret)):
                 val = val ^ shares_for_one_secret[j][i]
             recreated_secret = recreated_secret + chr(val)
 
@@ -228,7 +266,6 @@ def generate_cyclic_secret_share(args):
     f.write(line)
 
     f.close()
-
 
 
 if __name__ == '__main__':
@@ -249,7 +286,7 @@ if __name__ == '__main__':
     if args.CYCLIC and not args.r:
         raise Exception('Must provide --r argument for CYCLIC approach!')
 
-    if args.CYCLIC and (int(args.r) > int(args.n) - 1):
+    if args.CYCLIC and (int(args.r) > int(args.n)/2):
         raise Exception('Value for --r argument is too large!')
 
     if args.NAIVE:
