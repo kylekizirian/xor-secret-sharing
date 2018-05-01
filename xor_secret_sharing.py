@@ -2,84 +2,74 @@ import argparse
 import os
 import random
 
-def get_random_fake_secret(length):
-    random_line_number = random.randint(124, 5000)
-    file_path = os.path.join(os.curdir, "Frankenstein", "Frankenstein.txt")
+def get_secret_list(secret, m):
+    def get_one_fake_secret(length):
+        random_line_number = random.randint(124, 5000)
+        file_path = os.path.join(os.curdir, "Frankenstein", "Frankenstein.txt")
 
-    with open(file_path) as file:
-        lines = (line.rstrip() for line in file)
-        lines = list(line for line in lines if line)
+        with open(file_path) as file:
+            lines = [line.rstrip() for line in file if line.rstrip()]
 
-    if length < len(lines[random_line_number]):
-        random_string = lines[random_line_number][0:length]
-    else:
-        random_string = lines[random_line_number]
-        for i in range(0,length-len(lines[random_line_number])):
-            random_string = random_string + ' '
-    return random_string
+        if length < len(lines[random_line_number]):
+            random_string = lines[random_line_number][0:length]
+        else:
+            random_string = lines[random_line_number]
+            for i in range(0, length-len(lines[random_line_number])):
+                random_string = random_string + ' '
+        return random_string
 
-def generate_random_share(length):
-    share = []
-    for _ in range(length):
-        share.append(random.randint(0, 127)) # ascii char/1 byte range
-    return share
+    return [get_one_fake_secret(len(secret)) for _ in range(m-1)] + [secret]
+
+def generate_random_shares(share_length, num_shares=1):
+    return [[random.randint(0, 127)
+        for _ in range(share_length)]
+        for _ in range(num_shares)]
 
 def convert_string_to_ascii(secret_string):
-    secret_to_ascii = []
-    for i in range(len(secret_string)):
-        secret_to_ascii.append(ord(secret_string[i]))
-    return secret_to_ascii
+    return [ord(c) for c in secret_string]
 
 def convert_ascii_to_string(ascii_list):
-    ascii_to_string = ""
-    for ascii_val in ascii_list:
-        ascii_to_string = ascii_to_string + chr(ascii_val)
-    return ascii_to_string
+    return ''.join(map(chr, ascii_list))
 
-def generate_naive_secret_share(args):
+# elementwise XORs a list of (lists of ints with the same length)
+def XOR_all(xs):
+    result = list(xs[0])
+    for i in range(1, len(xs)):
+        for j in range(len(result)):
+            result[j] ^= xs[i][j]
+    return result
+
+def generate_naive_secret_share(secret, n, m, output="out"):
     """
     With NAIVE approach, encode each secret separately. With m secrets and n
     shares per secret, requires m*n storage.
     :param args: 
     :return: 
     """
-    secret_string_length = len(args.secret)
-    secret_list = []
-    # plant m-1 fake secrets
-    for _ in range(int(args.m) - 1):
-        secret_list.append(get_random_fake_secret(secret_string_length))
-
+    secret_length = len(secret)
+    secret_list = get_secret_list(secret, m)
     # secret_list is now length m, with m-1 fake secrets + real secret
-    secret_list.append(args.secret)
 
     all_secret_shares = []
     for secret in secret_list:
         # generate n-1 random shares for each secret
-        shares_for_one_secret = []
-        for _ in range(int(args.n) - 1):
-            shares_for_one_secret.append(generate_random_share(secret_string_length))
-
-        secret_to_ascii = convert_string_to_ascii(secret)
+        shares_for_one_secret = generate_random_shares(
+                secret_length, n - 1)
 
         # XOR all shares together with secret to create last share which can
         # be used to recreate the secret
-        last_share = []
-        for i in range(secret_string_length):
-            val = shares_for_one_secret[0][i]
-            for j in range(1, len(shares_for_one_secret)):
-                val = val ^ shares_for_one_secret[j][i]
-            val = val ^ secret_to_ascii[i]
-            last_share.append(val)
+        last_share = XOR_all(shares_for_one_secret +
+                [convert_string_to_ascii(secret)])
 
         shares_for_one_secret.append(last_share)
         all_secret_shares.append(shares_for_one_secret)
 
-    f = open(str(args.output), 'w+')
+    f = open(output, 'w+')
 
     # recreate secret by XOR-ing all shares together to verify correctness
     for shares_for_one_secret in all_secret_shares:
         recreated_secret = ""
-        for i in range(len(args.secret)):
+        for i in range(secret_length):
             val = shares_for_one_secret[0][i]
             for j in range(1, len(shares_for_one_secret)):
                 val = val ^ shares_for_one_secret[j][i]
@@ -93,60 +83,49 @@ def generate_naive_secret_share(args):
             f.write(line)
         f.write(recreated_secret + "\n\n")
 
-    storage_size = int(args.m) * int(args.n) * secret_string_length
+    storage_size = m * n * secret_length
     line = "Total storage size = " + str(storage_size) + " bytes"
     f.write(line)
 
     f.close()
 
 
-def generate_simple_secret_share(args):
+def generate_simple_secret_share(secret, n, m, output="out"):
     """
     With SIMPLE approach, encode m secrets with m + n - 1 shares. Generate n
     random shares, then generate m last shares to create m random secrets.
     :param args: 
     :return: 
     """
-    secret_string_length = len(args.secret)
-    secret_list = []
-    # plant m-1 fake secrets
-    for _ in range(int(args.m) - 1):
-        secret_list.append(get_random_fake_secret(secret_string_length))
+    secret_length = len(secret)
+    secret_list = get_secret_list(secret, m)
 
     # secret_list is now length m, with m-1 fake secrets + real secret
-    secret_list.append(args.secret)
+    secret_list.append(secret)
 
     # generate n - 1 random shares, used by all secrets for SIMPLE
-    random_shares = []
-    for _ in range(int(args.n) - 1):
-        random_shares.append(generate_random_share(secret_string_length))
+    random_shares = generate_random_shares(
+            secret_length, n - 1)
 
     all_secret_shares = []
     for secret in secret_list:
         shares_for_one_secret = []
         shares_for_one_secret = shares_for_one_secret + random_shares
 
-        secret_to_ascii = convert_string_to_ascii(secret)
-
         # XOR all shares together with secret to create last share which can
         # be used to recreate the secret
-        last_share = []
-        for i in range(secret_string_length):
-            val = shares_for_one_secret[0][i]
-            for j in range(1, len(shares_for_one_secret)):
-                val = val ^ shares_for_one_secret[j][i]
-            val = val ^ secret_to_ascii[i]
-            last_share.append(val)
+        last_share = XOR_all(shares_for_one_secret +
+                [convert_string_to_ascii(secret)])
 
         shares_for_one_secret.append(last_share)
         all_secret_shares.append(shares_for_one_secret)
 
-    f = open(str(args.output), 'w+')
+    f = open(output, 'w+')
 
     # recreate secret by XOR-ing all shares together to verify correctness
     for shares_for_one_secret in all_secret_shares:
         recreated_secret = ""
-        for i in range(len(args.secret)):
+        for i in range(secret_length):
             val = shares_for_one_secret[0][i]
             for j in range(1, len(shares_for_one_secret)):
                 val = val ^ shares_for_one_secret[j][i]
@@ -161,113 +140,60 @@ def generate_simple_secret_share(args):
             f.write(line)
         f.write(recreated_secret + "\n\n")
 
-    storage_size = (int(args.m) + int(args.n)) * secret_string_length
+    storage_size = (m + n) * secret_length
     line = "Total storage size = " + str(storage_size) + " bytes"
     f.write(line)
 
     f.close()
 
 
-def generate_cyclic_secret_share(args):
+def generate_cyclic_secret_share(secret, n, m, r):
     """
     With CYCLIC approach, encode m secrets with n shares, reuse r random shares
     between each secret.
     :param args: 
     :return: 
     """
-    secret_string_length = len(args.secret)
-    secret_list = []
-    # plant m-1 fake secrets
-    for _ in range(int(args.m) - 1):
-        secret_list.append(get_random_fake_secret(secret_string_length))
-
+    secret_length = len(secret)
+    secret_list = list(map(convert_string_to_ascii,get_secret_list(secret, m)))
     # secret_list is now length m, with m-1 fake secrets + real secret
-    secret_list.append(args.secret)
 
     all_secret_shares = []
 
-    # for CYCLIC, generate n - 1 random shares for first secret
-    shares_for_first_secret = []
-    for _ in range(int(args.n) - 1):
-        shares_for_first_secret.append(generate_random_share(secret_string_length))
-
-    # XOR all shares together with secret to create last share which can
-    # be used to recreate the secret
-    secret_to_ascii = convert_string_to_ascii(secret_list[0])
-    last_share = []
-    for i in range(secret_string_length):
-        val = shares_for_first_secret[0][i]
-        for j in range(1, len(shares_for_first_secret)):
-            val = val ^ shares_for_first_secret[j][i]
-        val = val ^ secret_to_ascii[i]
-        last_share.append(val)
-
-    shares_for_first_secret.append(last_share)
-    all_secret_shares.append(shares_for_first_secret)
-
-    # loop to generate the 2nd through 2nd to last secrets shares
-    for i in range(1, len(secret_list) - 1):
-        secret = secret_list[i]
-
-        # reuse with the last r shares from previous secret
-        shares_for_one_secret = []
-        for j in range(int(args.r), 0, -1):
-            shares_for_one_secret.append(all_secret_shares[i-1][(j)*-1])
-
-        # create n - r - 1 random shares
-        for j in range(int(args.n) - int(args.r) - 1):
-            shares_for_one_secret.append(generate_random_share(secret_string_length))
-
-        # XOR all shares together with secret to create last share which can
-        # be used to recreate the secret
-        secret_to_ascii = convert_string_to_ascii(secret)
-        last_share = []
-        for j in range(secret_string_length):
-            val = shares_for_one_secret[0][j]
-            for k in range(1, len(shares_for_one_secret)):
-                val = val ^ shares_for_one_secret[k][j]
-            val = val ^ secret_to_ascii[j]
-            last_share.append(val)
-
-        shares_for_one_secret.append(last_share)
-        all_secret_shares.append(shares_for_one_secret)
-
-
-    # handle generating shares for last secret separately
-    shares_for_last_secret = []
-
-    # reuse with the last r shares from previous secret
-    for j in range(int(args.r), 0, -1):
-        shares_for_last_secret.append(all_secret_shares[-1][(j) * -1])
-
-    # reuse first r shares from first secret
-    for j in range(int(args.r)):
-        shares_for_last_secret.append(all_secret_shares[0][j])
-
-    # add n - 2*r - 1 random shares
-    for j in range(int(args.n) - (2 * int(args.r)) - 1):
-        shares_for_last_secret.append(generate_random_share(secret_string_length))
-
-    # XOR all shares together with secret to create last share which can
-    # be used to recreate the secret
-    secret_to_ascii = convert_string_to_ascii(secret_list[-1])
-    last_share = []
-    for j in range(secret_string_length):
-        val = shares_for_last_secret[0][j]
-        for k in range(1, len(shares_for_last_secret)):
-            val = val ^ shares_for_last_secret[k][j]
-        val = val ^ secret_to_ascii[j]
-        last_share.append(val)
-
-    shares_for_last_secret.append(last_share)
-    all_secret_shares.append(shares_for_last_secret)
-
-    f = open(str(args.output), 'w+')
+    num_shares = (n-r) * m
+    shares = [None] * num_shares
+    shares[0:r] = generate_random_shares(secret_length, r)
+    for i in range(m): # for all secrets
+        off_the_circle = False
+        last_share_index = n-1
+        for j in range(r, n): # for all shares after the first overlapped ones
+            if not shares[(i*(n-r)+j) % num_shares]: # if the share hasn't been created already
+                shares[(i*(n-r)+j) % num_shares] = generate_random_shares(secret_length)[0]
+            elif j == r: # if there were no open shares to begin with then make one "off the circle"
+                off_the_circle = True
+                break
+            else: # make the previous share the one we generate for the secret
+                last_share_index = j-1
+                break
+        last_share = secret_list[i]
+        shares_for_this_secret = []
+        for j in range(n):
+            if j != last_share_index:
+                last_share = XOR_all(
+                        [last_share, shares[(i*(n-r)+j) % num_shares]])
+                shares_for_this_secret.append(
+                        shares[(i*(n-r)+j) % num_shares])
+        if not off_the_circle:
+            shares[(i*(n-r)+last_share_index)] = last_share
+        shares_for_this_secret.append(last_share)
+        all_secret_shares.append(shares_for_this_secret)
+            
+    f = open(output, 'w+')
 
     # recreate secret by XOR-ing all shares together to verify correctness
     for shares_for_one_secret in all_secret_shares:
         recreated_secret = ""
-        for i in range(len(args.secret)):
+        for i in range(secret_length):
             val = shares_for_one_secret[0][i]
             for j in range(1, len(shares_for_one_secret)):
                 val = val ^ shares_for_one_secret[j][i]
@@ -281,7 +207,7 @@ def generate_cyclic_secret_share(args):
             f.write(line)
         f.write(recreated_secret + "\n\n")
 
-    storage_size = (int(args.m) * (int(args.n) - int(args.r))) * secret_string_length
+    storage_size = m * (n - r) * secret_length
     line = "Total storage size = " + str(storage_size) + " bytes"
     f.write(line)
 
@@ -303,17 +229,19 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    if args.CYCLIC and not args.r:
-        raise Exception('Must provide --r argument for CYCLIC approach!')
-
-    if args.CYCLIC and (int(args.r) > int(args.n)/2):
-        raise Exception('Value for --r argument is too large!')
-
-    if args.NAIVE:
-      generate_naive_secret_share(args)
-
-    if args.SIMPLE:
-        generate_simple_secret_share(args)
+    secret = args.secret
+    output = args.output
+    n = int(args.n)
+    m = int(args.m)
 
     if args.CYCLIC:
-        generate_cyclic_secret_share(args)
+        if not args.r:
+            raise Exception('Must provide --r argument for CYCLIC approach!')
+        else:
+            generate_cyclic_secret_share(secret, n, m, int(args.r))
+
+    if args.NAIVE:
+        generate_naive_secret_share(secret, n, m)
+
+    if args.SIMPLE:
+        generate_simple_secret_share(secret, n, m)
